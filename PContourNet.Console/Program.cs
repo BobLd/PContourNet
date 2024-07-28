@@ -25,7 +25,8 @@
             // simplify the polyline
             for (int i = 0; i < contours.Count; i++)
             {
-                contours[i].points = PContour.ApproxPolyDP(contours[i].points, 1);
+                //contours[i].points = PContour.ApproxPolyDP(contours[i].points, 1);
+                var test = PContour.ApproxPolyDP(contours[i].GetSpan(), 1);
             }
         }
     }

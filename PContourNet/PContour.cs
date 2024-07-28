@@ -72,7 +72,7 @@
         }
 
         // first counter clockwise non-zero element in neighborhood
-        private static int[]? ccwNon0(int[] F, int w, int h, int i0, int j0, int i, int j, int offset)
+        private static int[]? ccwNon0(ReadOnlySpan<int> F, int w, int h, int i0, int j0, int i, int j, int offset)
         {
             int id = NeighborIndexToId(i0, j0, i, j);
             for (int k = 0; k < N_PIXEL_NEIGHBOR; k++)
@@ -89,7 +89,7 @@
         }
 
         // first clockwise non-zero element in neighborhood
-        private static int[]? cwNon0(int[] F, int w, int h, int i0, int j0, int i, int j, int offset)
+        private static int[]? cwNon0(ReadOnlySpan<int> F, int w, int h, int i0, int j0, int i, int j, int offset)
         {
             int id = NeighborIndexToId(i0, j0, i, j);
             for (int k = 0; k < N_PIXEL_NEIGHBOR; k++)
@@ -106,10 +106,10 @@
         }
 
         /** Data structure for an integer-aligned coordinate on bitmap image*/
-        public class Point
+        public readonly struct Point
         {
-            public int x;
-            public int y;
+            public readonly int x;
+            public readonly int y;
 
             public Point(int _x, int _y)
             {
@@ -127,7 +127,7 @@
         /** Data structure for a contour,
   * encodes vertices as well as hierarchical relationship to other contours
   */
-        public class Contour
+        public sealed class Contour
         {
             /** Vertices */
             public List<Point> points;
@@ -140,6 +140,13 @@
 
             /** Is this contour a hole (as opposed to outline) */
             public bool isHole;
+
+            public Span<Point> GetSpan()
+            {
+                ArgumentNullException.ThrowIfNull(points, nameof(points));
+
+                return points.ToArray();
+            }
         }
 
         /**
@@ -158,7 +165,7 @@
  * @return      An array of contours found in the image.
  * @see         Contour
  */
-        public static List<Contour> FindContours(int[] F, int w, int h)
+        public static List<Contour> FindContours(Span<int> F, int w, int h)
         {
             // Topological Structural Analysis of Digitized Binary Images by Border Following.
             // Suzuki, S. and Abe, K., CVGIP 30 1, pp 32-46 (1985)
@@ -434,30 +441,29 @@
          * @return           A simplified copy
          * @see              approxPolyDP
          */
-        public static List<Point> ApproxPolySimple(List<Point> polyline)
+        public static ReadOnlySpan<Point> ApproxPolySimple(ReadOnlySpan<Point> polyline)
         {
             float epsilon = 0.1f;
-            if (polyline.Count <= 2)
+            if (polyline.Length <= 2)
             {
                 return polyline;
             }
 
-            List<Point> ret = new List<Point>();
-            ret.Add(new Point(polyline[0]));
+            int p = 0;
+            Span<Point> ret = new Point[polyline.Length];
+            ret[p++] = polyline[0];
 
-            for (int i = 1; i < polyline.Count - 1; i++)
+            for (int i = 1; i < polyline.Length - 1; i++)
             {
-                float d = PointDistanceToSegment(polyline[i],
-                    polyline[i - 1],
-                    polyline[i + 1]);
+                float d = PointDistanceToSegment(polyline[i], polyline[i - 1], polyline[i + 1]);
                 if (d > epsilon)
                 {
-                    ret.Add(new Point(polyline[i]));
+                    ret[p++] = polyline[i]; // ret.Add(new Point(polyline[i]));
                 }
             }
 
-            ret.Add(new Point(polyline[polyline.Count - 1]));
-            return ret;
+            ret[p++] = polyline[polyline.Length - 1]; //ret.Add(new Point(polyline[polyline.Length - 1]));
+            return ret.Slice(0, p);
         }
 
         /**
@@ -472,7 +478,7 @@
  * @return           A simplified copy
  * @see              approxPolySimple
  */
-        public static List<Point> ApproxPolyDP(List<Point> polyline, float epsilon)
+        public static ReadOnlySpan<Point> ApproxPolyDP(ReadOnlySpan<Point> polyline, float epsilon)
         {
             // https://en.wikipedia.org/wiki/Ramer–Douglas–Peucker_algorithm
             // David Douglas & Thomas Peucker, 
@@ -480,18 +486,16 @@
             // represent a digitized line or its caricature", 
             // The Canadian Cartographer 10(2), 112–122 (1973)
 
-            if (polyline.Count <= 2)
+            if (polyline.Length <= 2)
             {
                 return polyline;
             }
 
             float dmax = 0;
             int argmax = -1;
-            for (int i = 1; i < polyline.Count - 1; i++)
+            for (int i = 1; i < polyline.Length - 1; i++)
             {
-                float d = PointDistanceToSegment(polyline[i],
-                    polyline[0],
-                    polyline[polyline.Count - 1]);
+                float d = PointDistanceToSegment(polyline[i], polyline[0], polyline[polyline.Length - 1]);
                 if (d > dmax)
                 {
                     dmax = d;
@@ -499,21 +503,35 @@
                 }
             }
 
-            List<Point> ret = new List<Point>();
+            int p = 0;
+            Span<Point> ret = new Point[polyline.Length]; // List<Point> ret = new List<Point>();
             if (dmax > epsilon)
             {
-                List<Point> L = ApproxPolyDP(new List<Point>(polyline.SubList(0, argmax + 1)), epsilon);
-                List<Point> R = ApproxPolyDP(new List<Point>(polyline.SubList(argmax, polyline.Count)), epsilon);
-                ret.AddRange(L.SubList(0, L.Count - 1));
-                ret.AddRange(R);
+                //List<Point> L = ApproxPolyDP(new List<Point>(polyline.SubList(0, argmax + 1)), epsilon);
+                //List<Point> R = ApproxPolyDP(new List<Point>(polyline.SubList(argmax, polyline.Count)), epsilon);
+                ReadOnlySpan<Point> L = ApproxPolyDP(polyline.SubList(0, argmax + 1), epsilon);
+                ReadOnlySpan<Point> R = ApproxPolyDP(polyline.SubList(argmax, polyline.Length), epsilon);
+                foreach (var l in L.SubList(0, L.Length - 1))
+                {
+                    ret[p++] = l;
+                }
+                //ret.AddRange(L.SubList(0, L.Count - 1));
+
+                foreach (var r in R)
+                {
+                    ret[p++] = r;
+                }
+                //ret.AddRange(R);
             }
             else
             {
-                ret.Add(new Point(polyline[0]));
-                ret.Add(new Point(polyline[polyline.Count - 1]));
+                ret[p++] = polyline[0];
+                ret[p++] = polyline[polyline.Length - 1];
+                //ret.Add(new Point(polyline[0]));
+                //ret.Add(new Point(polyline[polyline.Length - 1]));
             }
 
-            return ret;
+            return ret.Slice(0, p);
         }
     }
 }
