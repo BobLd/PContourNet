@@ -10,18 +10,27 @@
         // easier access with findContour algorithm
         private static int[]? NeighborIdToIndex(int i, int j, int id)
         {
-            return id switch
+            switch (id)
             {
-                0 => new int[] { i, j + 1 },
-                1 => new int[] { i - 1, j + 1 },
-                2 => new int[] { i - 1, j },
-                3 => new int[] { i - 1, j - 1 },
-                4 => new int[] { i, j - 1 },
-                5 => new int[] { i + 1, j - 1 },
-                6 => new int[] { i + 1, j },
-                7 => new int[] { i + 1, j + 1 },
-                _ => null
-            };
+                case 0:
+                    return new int[] { i, j + 1 };
+                case 1:
+                    return new int[] { i - 1, j + 1 };
+                case 2:
+                    return new int[] { i - 1, j };
+                case 3:
+                    return new int[] { i - 1, j - 1 };
+                case 4:
+                    return new int[] { i, j - 1 };
+                case 5:
+                    return new int[] { i + 1, j - 1 };
+                case 6:
+                    return new int[] { i + 1, j };
+                case 7:
+                    return new int[] { i + 1, j + 1 };
+                default:
+                    return null;
+            }
         }
 
         private static int NeighborIndexToId(int i0, int j0, int i, int j)
