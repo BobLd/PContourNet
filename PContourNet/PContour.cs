@@ -2,68 +2,106 @@
 {
     // Ported from https://github.com/BobLd/PContour/blob/6089a0ffbc67c59b976c252e1d0e2626c8bebcae/src/pcontour/PContour.java
 
-    public class PContour
+    public static class PContour
     {
         private const int N_PIXEL_NEIGHBOR = 8;
 
         // give pixel neighborhood counter-clockwise ID's for
         // easier access with findContour algorithm
-        static int[] neighborIDToIndex(int i, int j, int id)
+        private static int[]? NeighborIdToIndex(int i, int j, int id)
         {
-            if (id == 0) { return new int[] { i, j + 1 }; }
-            if (id == 1) { return new int[] { i - 1, j + 1 }; }
-            if (id == 2) { return new int[] { i - 1, j }; }
-            if (id == 3) { return new int[] { i - 1, j - 1 }; }
-            if (id == 4) { return new int[] { i, j - 1 }; }
-            if (id == 5) { return new int[] { i + 1, j - 1 }; }
-            if (id == 6) { return new int[] { i + 1, j }; }
-            if (id == 7) { return new int[] { i + 1, j + 1 }; }
-            return null;
+            return id switch
+            {
+                0 => new int[] { i, j + 1 },
+                1 => new int[] { i - 1, j + 1 },
+                2 => new int[] { i - 1, j },
+                3 => new int[] { i - 1, j - 1 },
+                4 => new int[] { i, j - 1 },
+                5 => new int[] { i + 1, j - 1 },
+                6 => new int[] { i + 1, j },
+                7 => new int[] { i + 1, j + 1 },
+                _ => null
+            };
         }
-        static int neighborIndexToID(int i0, int j0, int i, int j)
+
+        private static int NeighborIndexToId(int i0, int j0, int i, int j)
         {
             int di = i - i0;
             int dj = j - j0;
-            if (di == 0 && dj == 1) { return 0; }
-            if (di == -1 && dj == 1) { return 1; }
-            if (di == -1 && dj == 0) { return 2; }
-            if (di == -1 && dj == -1) { return 3; }
-            if (di == 0 && dj == -1) { return 4; }
-            if (di == 1 && dj == -1) { return 5; }
-            if (di == 1 && dj == 0) { return 6; }
-            if (di == 1 && dj == 1) { return 7; }
+            if (di == 0 && dj == 1)
+            {
+                return 0;
+            }
+
+            if (di == -1 && dj == 1)
+            {
+                return 1;
+            }
+
+            if (di == -1 && dj == 0)
+            {
+                return 2;
+            }
+
+            if (di == -1 && dj == -1)
+            {
+                return 3;
+            }
+
+            if (di == 0 && dj == -1)
+            {
+                return 4;
+            }
+
+            if (di == 1 && dj == -1)
+            {
+                return 5;
+            }
+
+            if (di == 1 && dj == 0)
+            {
+                return 6;
+            }
+
+            if (di == 1 && dj == 1)
+            {
+                return 7;
+            }
+
             return -1;
         }
 
         // first counter clockwise non-zero element in neighborhood
-        static int[] ccwNon0(int[] F, int w, int h, int i0, int j0, int i, int j, int offset)
+        private static int[]? ccwNon0(int[] F, int w, int h, int i0, int j0, int i, int j, int offset)
         {
-            int id = neighborIndexToID(i0, j0, i, j);
+            int id = NeighborIndexToId(i0, j0, i, j);
             for (int k = 0; k < N_PIXEL_NEIGHBOR; k++)
             {
                 int kk = (k + id + offset + N_PIXEL_NEIGHBOR * 2) % N_PIXEL_NEIGHBOR;
-                int[] ij = neighborIDToIndex(i0, j0, kk);
+                int[] ij = NeighborIdToIndex(i0, j0, kk);
                 if (F[ij[0] * w + ij[1]] != 0)
                 {
                     return ij;
                 }
             }
+
             return null;
         }
 
         // first clockwise non-zero element in neighborhood
-        static int[] cwNon0(int[] F, int w, int h, int i0, int j0, int i, int j, int offset)
+        private static int[]? cwNon0(int[] F, int w, int h, int i0, int j0, int i, int j, int offset)
         {
-            int id = neighborIndexToID(i0, j0, i, j);
+            int id = NeighborIndexToId(i0, j0, i, j);
             for (int k = 0; k < N_PIXEL_NEIGHBOR; k++)
             {
                 int kk = (-k + id - offset + N_PIXEL_NEIGHBOR * 2) % N_PIXEL_NEIGHBOR;
-                int[] ij = neighborIDToIndex(i0, j0, kk);
+                int[] ij = NeighborIdToIndex(i0, j0, kk);
                 if (F[ij[0] * w + ij[1]] != 0)
                 {
                     return ij;
                 }
             }
+
             return null;
         }
 
@@ -72,11 +110,13 @@
         {
             public int x;
             public int y;
+
             public Point(int _x, int _y)
             {
                 x = _x;
                 y = _y;
             }
+
             public Point(Point p)
             {
                 x = p.x;
@@ -91,10 +131,13 @@
         {
             /** Vertices */
             public List<Point> points;
+
             /** Unique ID, starts from 2 */
             public int id;
+
             /** ID of parent contour, 0 means top-level contour */
             public int parent;
+
             /** Is this contour a hole (as opposed to outline) */
             public bool isHole;
         }
@@ -107,7 +150,7 @@
  * <p>
  * See source code for step-by-step correspondence to the paper's algorithm
  * description.
- * @param  F    The bitmap, stored in 1-dimensional row-major form. 
+ * @param  F    The bitmap, stored in 1-dimensional row-major form.
  *              0=background, 1=foreground, will be modified by the function
  *              to hold semantic information
  * @param  w    Width of the bitmap
@@ -115,7 +158,7 @@
  * @return      An array of contours found in the image.
  * @see         Contour
  */
-        public List<Contour> findContours(int[] F, int w, int h)
+        public static List<Contour> FindContours(int[] F, int w, int h)
         {
             // Topological Structural Analysis of Digitized Binary Images by Border Following.
             // Suzuki, S. and Abe, K., CVGIP 30 1, pp 32-46 (1985)
@@ -128,11 +171,14 @@
             // of a binary picture
             for (int i = 1; i < h - 1; i++)
             {
-                F[i * w] = 0; F[i * w + w - 1] = 0;
+                F[i * w] = 0;
+                F[i * w + w - 1] = 0;
             }
+
             for (int i = 0; i < w; i++)
             {
-                F[i] = 0; F[w * h - 1 - i] = 0;
+                F[i] = 0;
+                F[w * h - 1 - i] = 0;
             }
 
             //Scan the picture with a TV raster and perform the following steps 
@@ -150,6 +196,7 @@
                     {
                         continue;
                     }
+
                     //(a) If fij = 1 and fi, j-1 = 0, then decide that the pixel 
                     //(i, j) is the border following starting point of an outer 
                     //border, increment NBD, and (i2, j2) <- (i, j - 1).
@@ -158,7 +205,6 @@
                         nbd++;
                         i2 = i;
                         j2 = j - 1;
-
 
                         //(b) Else if fij >= 1 and fi,j+1 = 0, then decide that the 
                         //pixel (i, j) is the border following starting point of a 
@@ -174,8 +220,6 @@
                         {
                             lnbd = F[i * w + j];
                         }
-
-
                     }
                     else
                     {
@@ -183,10 +227,14 @@
                         //(4) If fij != 1, then LNBD <- |fij| and resume the raster
                         //scan from pixel (i,j+1). The algorithm terminates when the
                         //scan reaches the lower right corner of the picture
-                        if (F[i * w + j] != 1) { lnbd = Math.Abs(F[i * w + j]); }
-                        continue;
+                        if (F[i * w + j] != 1)
+                        {
+                            lnbd = Math.Abs(F[i * w + j]);
+                        }
 
+                        continue;
                     }
+
                     //(2) Depending on the types of the newly found border 
                     //and the border with the sequential number LNBD 
                     //(i.e., the last border met on the current row), 
@@ -222,6 +270,7 @@
                             break;
                         }
                     }
+
                     if (B0.isHole)
                     {
                         if (B.isHole)
@@ -258,17 +307,22 @@
                     {
                         F[i * w + j] = -nbd;
                         //go to (4)
-                        if (F[i * w + j] != 1) { lnbd = Math.Abs(F[i * w + j]); }
+                        if (F[i * w + j] != 1)
+                        {
+                            lnbd = Math.Abs(F[i * w + j]);
+                        }
+
                         continue;
                     }
-                    i1 = i1j1[0]; j1 = i1j1[1];
+
+                    i1 = i1j1[0];
+                    j1 = i1j1[1];
 
                     // (3.2) (i2, j2) <- (i1, j1) ad (i3,j3) <- (i, j).
                     i2 = i1;
                     j2 = j1;
                     int i3 = i;
                     int j3 = j;
-
 
                     while (true)
                     {
@@ -305,7 +359,11 @@
                         //(coming back to the starting point), then go to (4);
                         if (i4 == i && j4 == j && i3 == i1 && j3 == j1)
                         {
-                            if (F[i * w + j] != 1) { lnbd = Math.Abs(F[i * w + j]); }
+                            if (F[i * w + j] != 1)
+                            {
+                                lnbd = Math.Abs(F[i * w + j]);
+                            }
+
                             break;
 
                             //otherwise, (i2, j2) + (i3, j3),(i3, j3) + (i4, j4), 
@@ -321,16 +379,23 @@
                     }
                 }
             }
+
             return contours;
         }
 
-        float pointDistanceToSegment(Point p, Point p0, Point p1)
+        private static float PointDistanceToSegment(Point p, Point p0, Point p1)
         {
             // https://stackoverflow.com/a/6853926
-            float x = p.x; float y = p.y;
-            float x1 = p0.x; float y1 = p0.y;
-            float x2 = p1.x; float y2 = p1.y;
-            float A = x - x1; float B = y - y1; float C = x2 - x1; float D = y2 - y1;
+            float x = p.x;
+            float y = p.y;
+            float x1 = p0.x;
+            float y1 = p0.y;
+            float x2 = p1.x;
+            float y2 = p1.y;
+            float A = x - x1;
+            float B = y - y1;
+            float C = x2 - x1;
+            float D = y2 - y1;
             float dot = A * C + B * D;
             float len_sq = C * C + D * D;
             float param = -1;
@@ -338,20 +403,25 @@
             {
                 param = dot / len_sq;
             }
-            float xx; float yy;
+
+            float xx;
+            float yy;
             if (param < 0)
             {
-                xx = x1; yy = y1;
+                xx = x1;
+                yy = y1;
             }
             else if (param > 1)
             {
-                xx = x2; yy = y2;
+                xx = x2;
+                yy = y2;
             }
             else
             {
                 xx = x1 + param * C;
                 yy = y1 + param * D;
             }
+
             float dx = x - xx;
             float dy = y - yy;
             return (float)Math.Sqrt(dx * dx + dy * dy);
@@ -364,19 +434,20 @@
          * @return           A simplified copy
          * @see              approxPolyDP
          */
-        public List<Point> approxPolySimple(List<Point> polyline)
+        public static List<Point> ApproxPolySimple(List<Point> polyline)
         {
             float epsilon = 0.1f;
             if (polyline.Count <= 2)
             {
                 return polyline;
             }
+
             List<Point> ret = new List<Point>();
             ret.Add(new Point(polyline[0]));
 
             for (int i = 1; i < polyline.Count - 1; i++)
             {
-                float d = pointDistanceToSegment(polyline[i],
+                float d = PointDistanceToSegment(polyline[i],
                     polyline[i - 1],
                     polyline[i + 1]);
                 if (d > epsilon)
@@ -384,6 +455,7 @@
                     ret.Add(new Point(polyline[i]));
                 }
             }
+
             ret.Add(new Point(polyline[polyline.Count - 1]));
             return ret;
         }
@@ -400,7 +472,7 @@
  * @return           A simplified copy
  * @see              approxPolySimple
  */
-        public List<Point> approxPolyDP(List<Point> polyline, float epsilon)
+        public static List<Point> ApproxPolyDP(List<Point> polyline, float epsilon)
         {
             // https://en.wikipedia.org/wiki/Ramer–Douglas–Peucker_algorithm
             // David Douglas & Thomas Peucker, 
@@ -412,11 +484,12 @@
             {
                 return polyline;
             }
+
             float dmax = 0;
             int argmax = -1;
             for (int i = 1; i < polyline.Count - 1; i++)
             {
-                float d = pointDistanceToSegment(polyline[i],
+                float d = PointDistanceToSegment(polyline[i],
                     polyline[0],
                     polyline[polyline.Count - 1]);
                 if (d > dmax)
@@ -425,20 +498,12 @@
                     argmax = i;
                 }
             }
+
             List<Point> ret = new List<Point>();
             if (dmax > epsilon)
             {
-                /*
-                List<Point> L = approxPolyDP(new List<Point>(polyline.subList(0, argmax + 1)), epsilon);
-                List<Point> R = approxPolyDP(new List<Point>(polyline.subList(argmax, polyline.Count)), epsilon);
-                ret.addAll(L.subList(0, L.Count - 1));
-                ret.addAll(R);
-                */
-
-   
-
-                List<Point> L = approxPolyDP(new List<Point>(polyline.SubList(0, argmax + 1)), epsilon);
-                List<Point> R = approxPolyDP(new List<Point>(polyline.SubList(argmax, polyline.Count)), epsilon);
+                List<Point> L = ApproxPolyDP(new List<Point>(polyline.SubList(0, argmax + 1)), epsilon);
+                List<Point> R = ApproxPolyDP(new List<Point>(polyline.SubList(argmax, polyline.Count)), epsilon);
                 ret.AddRange(L.SubList(0, L.Count - 1));
                 ret.AddRange(R);
             }
@@ -447,6 +512,7 @@
                 ret.Add(new Point(polyline[0]));
                 ret.Add(new Point(polyline[polyline.Count - 1]));
             }
+
             return ret;
         }
     }
