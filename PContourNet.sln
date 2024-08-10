@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.35013.160
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PContourNet", "PContourNet\PContourNet.csproj", "{E7BDD6B3-8DD9-4E2C-9587-ED59B6B50E39}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PContourNet", "PContourNet\PContourNet.csproj", "{E7BDD6B3-8DD9-4E2C-9587-ED59B6B50E39}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PContourNet.Console", "PContourNet.Console\PContourNet.Console.csproj", "{0373A05C-0F05-4ADD-BD04-57B2BA2C0633}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PContourNet.Console", "PContourNet.Console\PContourNet.Console.csproj", "{0373A05C-0F05-4ADD-BD04-57B2BA2C0633}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PContourNet.Tests", "PContourNet.Tests\PContourNet.Tests.csproj", "{98637939-933A-4058-9692-177B627F8324}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{0373A05C-0F05-4ADD-BD04-57B2BA2C0633}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0373A05C-0F05-4ADD-BD04-57B2BA2C0633}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0373A05C-0F05-4ADD-BD04-57B2BA2C0633}.Release|Any CPU.Build.0 = Release|Any CPU
+		{98637939-933A-4058-9692-177B627F8324}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{98637939-933A-4058-9692-177B627F8324}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{98637939-933A-4058-9692-177B627F8324}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{98637939-933A-4058-9692-177B627F8324}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

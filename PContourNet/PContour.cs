@@ -1,35 +1,75 @@
-﻿namespace PContourNet
-{
-    // Ported from https://github.com/BobLd/PContour/blob/6089a0ffbc67c59b976c252e1d0e2626c8bebcae/src/pcontour/PContour.java
+﻿// MIT License
+//
+// Copyright (c) 2021 Lingdong Huang
+// Copyright (c) 2024 BobLd
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
+// Ported from https://github.com/LingDong-/PContour/commit/64b943072491bcfd5e9e73676981f53f54cf2c75
+
+namespace PContourNet
+{
     public static class PContour
     {
         private const int N_PIXEL_NEIGHBOR = 8;
 
-        // give pixel neighborhood counter-clockwise ID's for
-        // easier access with findContour algorithm
-        private static int[]? NeighborIdToIndex(int i, int j, int id)
+        /// <summary>
+        /// Give pixel neighborhood counter-clockwise ID's for easier access with findContour algorithm.
+        /// </summary>
+        private static void NeighborIdToIndex(int i, int j, int id, out int x, out int y)
         {
             switch (id)
             {
                 case 0:
-                    return new int[] { i, j + 1 };
+                    x = i;
+                    y = j + 1;
+                    return;
                 case 1:
-                    return new int[] { i - 1, j + 1 };
+                    x = i - 1;
+                    y = j + 1;
+                    return;
                 case 2:
-                    return new int[] { i - 1, j };
+                    x = i - 1;
+                    y = j;
+                    return;
                 case 3:
-                    return new int[] { i - 1, j - 1 };
+                    x = i - 1;
+                    y = j - 1;
+                    return;
                 case 4:
-                    return new int[] { i, j - 1 };
+                    x = i;
+                    y = j - 1;
+                    return;
                 case 5:
-                    return new int[] { i + 1, j - 1 };
+                    x = i + 1;
+                    y = j - 1;
+                    return;
                 case 6:
-                    return new int[] { i + 1, j };
+                    x = i + 1;
+                    y = j;
+                    return;
                 case 7:
-                    return new int[] { i + 1, j + 1 };
+                    x = i + 1;
+                    y = j + 1;
+                    return;
                 default:
-                    return null;
+                    throw new ArgumentOutOfRangeException($"Could not find position for id '{id}'. Value should be between 0 and 7 inclusive.", nameof(id));
             }
         }
 
@@ -80,94 +120,125 @@
             return -1;
         }
 
-        // first counter clockwise non-zero element in neighborhood
-        private static int[]? ccwNon0(int[] F, int w, int h, int i0, int j0, int i, int j, int offset)
+        /// <summary>
+        /// First counter clockwise non-zero element in neighborhood.
+        /// </summary>
+        private static bool ccwNon0(ReadOnlySpan<int> F, int w, int h, int i0, int j0, int i, int j, int offset, out int x, out int y)
         {
             int id = NeighborIndexToId(i0, j0, i, j);
             for (int k = 0; k < N_PIXEL_NEIGHBOR; k++)
             {
                 int kk = (k + id + offset + N_PIXEL_NEIGHBOR * 2) % N_PIXEL_NEIGHBOR;
-                int[] ij = NeighborIdToIndex(i0, j0, kk);
-                if (F[ij[0] * w + ij[1]] != 0)
+
+                NeighborIdToIndex(i0, j0, kk, out int i1, out int j1);
+                if (F[i1 * w + j1] != 0)
                 {
-                    return ij;
+                    x = i1;
+                    y = j1;
+                    return true;
                 }
             }
 
-            return null;
+            x = -1;
+            y = -1;
+            return false;
         }
 
-        // first clockwise non-zero element in neighborhood
-        private static int[]? cwNon0(int[] F, int w, int h, int i0, int j0, int i, int j, int offset)
+        /// <summary>
+        /// First clockwise non-zero element in neighborhood.
+        /// </summary>
+        private static bool cwNon0(ReadOnlySpan<int> F, int w, int h, int i0, int j0, int i, int j, int offset, out int x, out int y)
         {
             int id = NeighborIndexToId(i0, j0, i, j);
             for (int k = 0; k < N_PIXEL_NEIGHBOR; k++)
             {
                 int kk = (-k + id - offset + N_PIXEL_NEIGHBOR * 2) % N_PIXEL_NEIGHBOR;
-                int[] ij = NeighborIdToIndex(i0, j0, kk);
-                if (F[ij[0] * w + ij[1]] != 0)
+                NeighborIdToIndex(i0, j0, kk, out int i1, out int j1);
+                if (F[i1 * w + j1] != 0)
                 {
-                    return ij;
+                    x = i1;
+                    y = j1;
+                    return true;
                 }
             }
 
-            return null;
+            x = -1;
+            y = -1;
+            return false;
         }
 
-        /** Data structure for an integer-aligned coordinate on bitmap image*/
-        public class Point
+        /// <summary>
+        /// Data structure for an integer-aligned coordinate on bitmap image.
+        /// </summary>
+        public readonly struct Point
         {
-            public int x;
-            public int y;
+            public int X { get; }
+            public int Y { get; }
 
-            public Point(int _x, int _y)
+            public Point(int x, int y)
             {
-                x = _x;
-                y = _y;
+                X = x;
+                Y = y;
             }
 
             public Point(Point p)
             {
-                x = p.x;
-                y = p.y;
+                X = p.X;
+                Y = p.Y;
             }
         }
 
-        /** Data structure for a contour,
-  * encodes vertices as well as hierarchical relationship to other contours
-  */
-        public class Contour
+        /// <summary>
+        /// Data structure for a contour, encodes vertices as well as hierarchical relationship to other contours.
+        /// </summary>
+        public sealed class Contour
         {
-            /** Vertices */
+            /// <summary>
+            /// Vertices.
+            /// </summary>
             public List<Point> points;
 
-            /** Unique ID, starts from 2 */
+            /// <summary>
+            /// Unique ID, starts from 2.
+            /// </summary>
             public int id;
 
-            /** ID of parent contour, 0 means top-level contour */
+            /// <summary>
+            /// ID of parent contour, 0 means top-level contour.
+            /// </summary>
             public int parent;
 
-            /** Is this contour a hole (as opposed to outline) */
+            /// <summary>
+            /// Is this contour a hole (as opposed to outline).
+            /// </summary>
             public bool isHole;
+
+            /// <summary>
+            /// Vertices.
+            /// </summary>
+            public Span<Point> GetPointsSpan()
+            {
+                ArgumentNullException.ThrowIfNull(points, nameof(points));
+
+                return points.ToArray();
+            }
         }
 
-        /**
- * Find contours in a binary image
- * <p>
- * Implements Suzuki, S. and Abe, K.
- * Topological Structural Analysis of Digitized Binary Images by Border Following.
- * <p>
- * See source code for step-by-step correspondence to the paper's algorithm
- * description.
- * @param  F    The bitmap, stored in 1-dimensional row-major form.
- *              0=background, 1=foreground, will be modified by the function
- *              to hold semantic information
- * @param  w    Width of the bitmap
- * @param  h    Height of the bitmap
- * @return      An array of contours found in the image.
- * @see         Contour
- */
-        public static List<Contour> FindContours(int[] F, int w, int h)
+        /// <summary>
+        /// Find contours in a binary image.
+        /// <para>
+        /// Implements Suzuki, S. and Abe, K.
+        /// Topological Structural Analysis of Digitized Binary Images by Border Following.
+        /// </para>
+        /// See source code for step-by-step correspondence to the paper's algorithm description.
+        /// </summary>
+        /// <param name="F">The bitmap, stored in 1-dimensional row-major form.
+        /// 0=background,
+        /// 1=foreground, will be modified by the function to hold semantic information.</param>
+        /// <param name="w">Width of the bitmap.</param>
+        /// <param name="h">Height of the bitmap.</param>
+        /// <returns>An array of contours found in the image.</returns>
+        public static IReadOnlyList<Contour> FindContours(Span<int> F, int w, int h)
         {
             // Topological Structural Analysis of Digitized Binary Images by Border Following.
             // Suzuki, S. and Abe, K., CVGIP 30 1, pp 32-46 (1985)
@@ -190,9 +261,9 @@
                 F[w * h - 1 - i] = 0;
             }
 
-            //Scan the picture with a TV raster and perform the following steps 
-            //for each pixel such that fij # 0. Every time we begin to scan a 
-            //new row of the picture, reset LNBD to 1.
+            // Scan the picture with a TV raster and perform the following steps 
+            // for each pixel such that fij # 0. Every time we begin to scan a 
+            // new row of the picture, reset LNBD to 1.
             for (int i = 1; i < h - 1; i++)
             {
                 lnbd = 1;
@@ -206,19 +277,19 @@
                         continue;
                     }
 
-                    //(a) If fij = 1 and fi, j-1 = 0, then decide that the pixel 
-                    //(i, j) is the border following starting point of an outer 
-                    //border, increment NBD, and (i2, j2) <- (i, j - 1).
+                    // (a) If fij = 1 and fi, j-1 = 0, then decide that the pixel 
+                    // (i, j) is the border following starting point of an outer 
+                    // border, increment NBD, and (i2, j2) <- (i, j - 1).
                     if (F[i * w + j] == 1 && F[i * w + (j - 1)] == 0)
                     {
                         nbd++;
                         i2 = i;
                         j2 = j - 1;
 
-                        //(b) Else if fij >= 1 and fi,j+1 = 0, then decide that the 
-                        //pixel (i, j) is the border following starting point of a 
-                        //hole border, increment NBD, (i2, j2) <- (i, j + 1), and 
-                        //LNBD + fij in case fij > 1.  
+                        // (b) Else if fij >= 1 and fi,j+1 = 0, then decide that the 
+                        // pixel (i, j) is the border following starting point of a 
+                        // hole border, increment NBD, (i2, j2) <- (i, j + 1), and 
+                        // LNBD + fij in case fij > 1.  
                     }
                     else if (F[i * w + j] >= 1 && F[i * w + j + 1] == 0)
                     {
@@ -232,10 +303,10 @@
                     }
                     else
                     {
-                        //(c) Otherwise, go to (4).
-                        //(4) If fij != 1, then LNBD <- |fij| and resume the raster
-                        //scan from pixel (i,j+1). The algorithm terminates when the
-                        //scan reaches the lower right corner of the picture
+                        // (c) Otherwise, go to (4).
+                        // (4) If fij != 1, then LNBD <- |fij| and resume the raster
+                        // scan from pixel (i,j+1). The algorithm terminates when the
+                        // scan reaches the lower right corner of the picture
                         if (F[i * w + j] != 1)
                         {
                             lnbd = Math.Abs(F[i * w + j]);
@@ -244,10 +315,10 @@
                         continue;
                     }
 
-                    //(2) Depending on the types of the newly found border 
-                    //and the border with the sequential number LNBD 
-                    //(i.e., the last border met on the current row), 
-                    //decide the parent of the current border as shown in Table 1.
+                    // (2) Depending on the types of the newly found border 
+                    // and the border with the sequential number LNBD 
+                    // (i.e., the last border met on the current row), 
+                    // decide the parent of the current border as shown in Table 1.
                     // TABLE 1
                     // Decision Rule for the Parent Border of the Newly Found Border B
                     // ----------------------------------------------------------------
@@ -263,59 +334,49 @@
                     //                                               of the border B'
                     // ----------------------------------------------------------------
 
-                    Contour B = new Contour();
-                    B.points = new List<Point>();
-                    B.points.Add(new Point(j, i));
-                    B.isHole = (j2 == j + 1);
-                    B.id = nbd;
+                    var B = new Contour
+                    {
+                        isHole = j2 == j + 1,
+                        id = nbd,
+                        points =
+                        [
+                            new Point(j, i)
+                        ]
+                    };
+
                     contours.Add(B);
 
-                    Contour B0 = new Contour();
-                    for (int c = 0; c < contours.Count; c++)
+                    var B0 = new Contour();
+                    foreach (var c in contours)
                     {
-                        if (contours[c].id == lnbd)
+                        if (c.id == lnbd)
                         {
-                            B0 = contours[c];
+                            B0 = c;
                             break;
                         }
                     }
 
                     if (B0.isHole)
                     {
-                        if (B.isHole)
-                        {
-                            B.parent = B0.parent;
-                        }
-                        else
-                        {
-                            B.parent = lnbd;
-                        }
+                        B.parent = B.isHole ? B0.parent : lnbd;
                     }
                     else
                     {
-                        if (B.isHole)
-                        {
-                            B.parent = lnbd;
-                        }
-                        else
-                        {
-                            B.parent = B0.parent;
-                        }
+                        B.parent = B.isHole ? lnbd : B0.parent;
                     }
 
-                    //(3) From the starting point (i, j), follow the detected border: 
-                    //this is done by the following substeps (3.1) through (3.5).
+                    // (3) From the starting point (i, j), follow the detected border: 
+                    // this is done by the following substeps (3.1) through (3.5).
 
-                    //(3.1) Starting from (i2, j2), look around clockwise the pixels 
-                    //in the neigh- borhood of (i, j) and tind a nonzero pixel. 
-                    //Let (i1, j1) be the first found nonzero pixel. If no nonzero 
-                    //pixel is found, assign -NBD to fij and go to (4).
-                    int i1 = -1, j1 = -1;
-                    int[] i1j1 = cwNon0(F, w, h, i, j, i2, j2, 0);
-                    if (i1j1 == null)
+                    // (3.1) Starting from (i2, j2), look around clockwise the pixels 
+                    // in the neighborhood of (i, j) and tind a nonzero pixel. 
+                    // Let (i1, j1) be the first found nonzero pixel. If no nonzero 
+                    // pixel is found, assign -NBD to fij and go to (4).
+
+                    if (!cwNon0(F, w, h, i, j, i2, j2, 0, out int i1, out int j1))
                     {
                         F[i * w + j] = -nbd;
-                        //go to (4)
+                        // go to (4)
                         if (F[i * w + j] != 1)
                         {
                             lnbd = Math.Abs(F[i * w + j]);
@@ -323,9 +384,6 @@
 
                         continue;
                     }
-
-                    i1 = i1j1[0];
-                    j1 = i1j1[1];
 
                     // (3.2) (i2, j2) <- (i1, j1) ad (i3,j3) <- (i, j).
                     i2 = i1;
@@ -335,25 +393,26 @@
 
                     while (true)
                     {
-                        //(3.3) Starting from the next elementof the pixel (i2, j2) 
-                        //in the counterclock- wise order, examine counterclockwise 
-                        //the pixels in the neighborhood of the current pixel (i3, j3) 
-                        //to find a nonzero pixel and let the first one be (i4, j4).
+                        // (3.3) Starting from the next element of the pixel (i2, j2) 
+                        // in the counterclockwise order, examine counterclockwise 
+                        // the pixels in the neighborhood of the current pixel (i3, j3) 
+                        // to find a nonzero pixel and let the first one be (i4, j4).
 
-                        int[] i4j4 = ccwNon0(F, w, h, i3, j3, i2, j2, 1);
-                        int i4 = i4j4[0];
-                        int j4 = i4j4[1];
+                        if (!ccwNon0(F, w, h, i3, j3, i2, j2, 1, out int i4, out int j4))
+                        {
+                            throw new Exception("Could not find first counter clockwise non-zero element in neighborhood.");
+                        }
 
                         contours[contours.Count - 1].points.Add(new Point(j4, i4));
 
-                        //(a) If the pixel (i3, j3 + 1) is a O-pixel examined in the
-                        //substep (3.3) then fi3, j3 <-  -NBD.
+                        // (a) If the pixel (i3, j3 + 1) is a O-pixel examined in the
+                        // substep (3.3) then fi3, j3 <-  -NBD.
                         if (F[i3 * w + j3 + 1] == 0)
                         {
                             F[i3 * w + j3] = -nbd;
 
-                            //(b) If the pixel (i3, j3 + 1) is not a O-pixel examined 
-                            //in the substep (3.3) and fi3,j3 = 1, then fi3,j3 <- NBD.
+                            // (b) If the pixel (i3, j3 + 1) is not a O-pixel examined 
+                            // in the substep (3.3) and fi3,j3 = 1, then fi3,j3 <- NBD.
                         }
                         else if (F[i3 * w + j3] == 1)
                         {
@@ -361,11 +420,11 @@
                         }
                         else
                         {
-                            //(c) Otherwise, do not change fi3, j3.
+                            // (c) Otherwise, do not change fi3, j3.
                         }
 
-                        //(3.5) If (i4, j4) = (i, j) and (i3, j3) = (i1, j1) 
-                        //(coming back to the starting point), then go to (4);
+                        // (3.5) If (i4, j4) = (i, j) and (i3, j3) = (i1, j1) 
+                        // (coming back to the starting point), then go to (4);
                         if (i4 == i && j4 == j && i3 == i1 && j3 == j1)
                         {
                             if (F[i * w + j] != 1)
@@ -375,8 +434,8 @@
 
                             break;
 
-                            //otherwise, (i2, j2) + (i3, j3),(i3, j3) + (i4, j4), 
-                            //and go back to (3.3).
+                            // otherwise, (i2, j2) + (i3, j3),(i3, j3) + (i4, j4), 
+                            // and go back to (3.3).
                         }
                         else
                         {
@@ -395,12 +454,12 @@
         private static float PointDistanceToSegment(Point p, Point p0, Point p1)
         {
             // https://stackoverflow.com/a/6853926
-            float x = p.x;
-            float y = p.y;
-            float x1 = p0.x;
-            float y1 = p0.y;
-            float x2 = p1.x;
-            float y2 = p1.y;
+            float x = p.X;
+            float y = p.Y;
+            float x1 = p0.X;
+            float y1 = p0.Y;
+            float x2 = p1.X;
+            float y2 = p1.Y;
             float A = x - x1;
             float B = y - y1;
             float C = x2 - x1;
@@ -433,55 +492,51 @@
 
             float dx = x - xx;
             float dy = y - yy;
-            return (float)Math.Sqrt(dx * dx + dy * dy);
+            return MathF.Sqrt(dx * dx + dy * dy);
         }
 
-        /**
-         * Simplify contour by removing definately extraneous vertices,
-         * without modifying shape of the contour.
-         * @param  polyline  The vertices
-         * @return           A simplified copy
-         * @see              approxPolyDP
-         */
-        public static List<Point> ApproxPolySimple(List<Point> polyline)
+        /// <summary>
+        /// Simplify contour by removing definitely extraneous vertices, without modifying shape of the contour.
+        /// </summary>
+        /// <param name="polyline">The vertices.</param>
+        /// <returns>A simplified copy.</returns>
+        public static ReadOnlySpan<Point> ApproxPolySimple(ReadOnlySpan<Point> polyline)
         {
             float epsilon = 0.1f;
-            if (polyline.Count <= 2)
+            if (polyline.Length <= 2)
             {
                 return polyline;
             }
 
-            List<Point> ret = new List<Point>();
-            ret.Add(new Point(polyline[0]));
+            int p = 0;
+            Span<Point> ret = new Point[polyline.Length];
+            ret[p++] = polyline[0];
 
-            for (int i = 1; i < polyline.Count - 1; i++)
+            for (int i = 1; i < polyline.Length - 1; i++)
             {
-                float d = PointDistanceToSegment(polyline[i],
-                    polyline[i - 1],
-                    polyline[i + 1]);
+                float d = PointDistanceToSegment(polyline[i], polyline[i - 1], polyline[i + 1]);
                 if (d > epsilon)
                 {
-                    ret.Add(new Point(polyline[i]));
+                    ret[p++] = polyline[i];
                 }
             }
 
-            ret.Add(new Point(polyline[polyline.Count - 1]));
-            return ret;
+            ret[p++] = polyline[polyline.Length - 1];
+            return ret.Slice(0, p);
         }
 
-        /**
- * Simplify contour using Douglas Peucker algorithm.
- * <p>
- * Implements David Douglas and Thomas Peucker,
- * "Algorithms for the reduction of the number of points required to
- * represent a digitized line or its caricature",
- * The Canadian Cartographer 10(2), 112–122 (1973)
- * @param  polyline  The vertices
- * @param  epsilon   Maximum allowed error
- * @return           A simplified copy
- * @see              approxPolySimple
- */
-        public static List<Point> ApproxPolyDP(List<Point> polyline, float epsilon)
+        /// <summary>
+        /// Simplify contour using Douglas Peucker algorithm.
+        /// <para>
+        /// Implements David Douglas and Thomas Peucker, "Algorithms for the reduction of the number of points required to
+        /// represent a digitized line or its caricature",
+        /// The Canadian Cartographer 10(2), 112–122 (1973)
+        /// </para>
+        /// </summary>
+        /// <param name="polyline">The vertices.</param>
+        /// <param name="epsilon">Maximum allowed error.</param>
+        /// <returns>A simplified copy.</returns>
+        public static ReadOnlySpan<Point> ApproxPolyDP(ReadOnlySpan<Point> polyline, float epsilon)
         {
             // https://en.wikipedia.org/wiki/Ramer–Douglas–Peucker_algorithm
             // David Douglas & Thomas Peucker, 
@@ -489,18 +544,19 @@
             // represent a digitized line or its caricature", 
             // The Canadian Cartographer 10(2), 112–122 (1973)
 
-            if (polyline.Count <= 2)
+            if (polyline.Length <= 2)
             {
                 return polyline;
             }
 
+            var first = polyline[0];
+            var last = polyline[polyline.Length - 1];
+
             float dmax = 0;
             int argmax = -1;
-            for (int i = 1; i < polyline.Count - 1; i++)
+            for (int i = 1; i < polyline.Length - 1; i++)
             {
-                float d = PointDistanceToSegment(polyline[i],
-                    polyline[0],
-                    polyline[polyline.Count - 1]);
+                float d = PointDistanceToSegment(polyline[i], first, last);
                 if (d > dmax)
                 {
                     dmax = d;
@@ -508,21 +564,30 @@
                 }
             }
 
-            List<Point> ret = new List<Point>();
+            int p = 0;
+            Span<Point> ret = new Point[polyline.Length];
+
             if (dmax > epsilon)
             {
-                List<Point> L = ApproxPolyDP(new List<Point>(polyline.SubList(0, argmax + 1)), epsilon);
-                List<Point> R = ApproxPolyDP(new List<Point>(polyline.SubList(argmax, polyline.Count)), epsilon);
-                ret.AddRange(L.SubList(0, L.Count - 1));
-                ret.AddRange(R);
+                ReadOnlySpan<Point> L = ApproxPolyDP(polyline.Slice(0, argmax + 1), epsilon);
+                foreach (var l in L.Slice(0, L.Length - 1))
+                {
+                    ret[p++] = l;
+                }
+
+                ReadOnlySpan<Point> R = ApproxPolyDP(polyline.Slice(argmax), epsilon);
+                foreach (var r in R)
+                {
+                    ret[p++] = r;
+                }
             }
             else
             {
-                ret.Add(new Point(polyline[0]));
-                ret.Add(new Point(polyline[polyline.Count - 1]));
+                ret[p++] = first;
+                ret[p++] = last;
             }
 
-            return ret;
+            return ret.Slice(0, p);
         }
     }
 }

@@ -20,12 +20,12 @@
             int height = 8;
 
             // find contours
-            List<PContour.Contour> contours = PContour.FindContours(bitmap, width, height);
+            var contours = PContour.FindContours(bitmap, width, height);
 
             // simplify the polyline
             for (int i = 0; i < contours.Count; i++)
             {
-                contours[i].points = PContour.ApproxPolyDP(contours[i].points, 1);
+                contours[i].points = PContour.ApproxPolyDP(contours[i].GetPointsSpan(), 1).ToArray().ToList();
             }
         }
     }
